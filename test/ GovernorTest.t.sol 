@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Test.sol";
+import "../contracts/GovernanceToken.sol";
+import "../contracts/SimpleGovernor.sol";
+
+contract GovernorTest is Test {
+    GovernanceToken token;
+    SimpleGovernor governor;
+    address voter1 = address(0x1);
+    address voter2 = address(0x2);
+
+    function setUp() public {
+        token = new GovernanceToken(1_000_000 ether);
+        governor = new SimpleGovernor(address(token), 1, 20, 100 ether, 4);
+
+        // distribute tokens
+        token.transfer(voter1, 5000 ether);
+        token.transfer(voter2, 5000 ether);
+
+        vm.roll(block.number + 1);
+    }
+
+    function testProposalLifecycle() public {
+        vm.prank(voter1);
+        uint256 proposalId = governor.createProposal("ipfs://dummyMetadata");
+
+        vm.roll(block.number + 2);
+        vm.prank(voter1);
+        governor.castVote(proposalId, 1); // for
+
+        vm.prank(voter2);
+        governor.castVote(proposalId, 0); // against
+
+        vm.roll(block.number + 30);
+        governor.finalizeProposal(proposalId);
+    }
+}
